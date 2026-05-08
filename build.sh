@@ -7,9 +7,9 @@
 #   ./build.sh          # Build all platforms
 #   ./build.sh clean    # Remove all build artifacts
 #
-set -e
+set -eo pipefail  # pipefail so `... | tail -N` doesn't swallow configure/make errors
 
-FFMPEG_VERSION="n7.1"
+FFMPEG_VERSION="n8.1"
 FFMPEG_REPO="https://github.com/FFmpeg/FFmpeg.git"
 DAV1D_VERSION="1.5.1"
 DAV1D_REPO="https://code.videolan.org/videolan/dav1d.git"
@@ -108,7 +108,7 @@ COMMON_FLAGS=(
     --enable-optimizations --enable-stripping --disable-debug
     --disable-autodetect --disable-doc --disable-programs
     --disable-devices --disable-outdevs --disable-indevs
-    --disable-postproc --disable-avdevice --disable-avfilter
+    --disable-avdevice --disable-avfilter
     --enable-swscale --disable-encoders --disable-muxers
     --disable-bsfs --disable-network --disable-protocols
     --disable-d3d11va --disable-dxva2 --disable-vaapi --disable-vdpau
