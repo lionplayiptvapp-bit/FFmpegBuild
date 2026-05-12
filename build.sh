@@ -146,12 +146,14 @@ COMMON_FLAGS=(
     --enable-parser=vp8 --enable-parser=vp9 --enable-parser=av1
     --enable-bsf=aac_adtstoasc --enable-bsf=h264_mp4toannexb
     --enable-bsf=hevc_mp4toannexb --enable-bsf=extract_extradata
-    # MP4 muxer for AetherEngine's HLSVideoEngine. Lets the engine
-    # remux source bytes into fragmented MP4 segments served via
-    # local HLS to AVPlayer for the Dolby-Vision-via-AVPlayer hybrid
-    # path. The mov muxer is the underlying implementation; mp4
-    # selects it with the right brand defaults.
-    --enable-muxer=mp4 --enable-muxer=mov
+    # MP4 / mov muxers underlie the per-fragment fmp4 segment output;
+    # the hls muxer drives the segmentation + per-segment styp emission
+    # + playlist for AetherEngine's HLSVideoEngine. We override
+    # `s->io_open` / `s->io_close2` so segment writes land in Swift
+    # memory rather than on disk, but the muxer's logic itself is
+    # libavformat's hlsenc.c verbatim, byte-identical to
+    # `ffmpeg -f hls -hls_segment_type fmp4`.
+    --enable-muxer=mp4 --enable-muxer=mov --enable-muxer=hls
     # FLAC encoder for the upcoming TrueHD / DTS / DTS-HD-MA bridge
     # (DrHurt's `-c:a flac` trick from AetherEngine#1). Those codecs
     # aren't legal in fMP4 / AVPlayer's decode set, but FLAC is. The
