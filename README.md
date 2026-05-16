@@ -84,11 +84,11 @@ HDR metadata (BT.2020, SMPTE ST 2084 / PQ, HLG, DV RPU) is preserved end-to-end 
 
 Per architecture, release configuration:
 
-| Target                | FFmpeg    | dav1d    | Total   |
-| --------------------- | --------- | -------- | ------- |
-| iOS / tvOS arm64      | ~10.5 MB  | ~1.2 MB  | ~12 MB  |
-| macOS arm64           | ~10.5 MB  | ~1.2 MB  | ~12 MB  |
-| macOS x86_64          | ~11 MB    | ~1.3 MB  | ~12 MB  |
+| Target                | FFmpeg    | dav1d    | Total     |
+| --------------------- | --------- | -------- | --------- |
+| iOS / tvOS arm64      | ~9.4 MB   | ~1 MB    | ~10.4 MB  |
+| macOS arm64           | ~9.5 MB   | ~1 MB    | ~10.5 MB  |
+| macOS x86_64          | ~9.3 MB   | ~2.8 MB  | ~12.1 MB  |
 
 Assembly-optimized paths are enabled where the Apple toolchain permits.
 
