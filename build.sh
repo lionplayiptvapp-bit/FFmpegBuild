@@ -158,14 +158,21 @@ COMMON_FLAGS=(
     # libavformat's hlsenc.c verbatim, byte-identical to
     # `ffmpeg -f hls -hls_segment_type fmp4`.
     --enable-muxer=mp4 --enable-muxer=mov --enable-muxer=hls
-    # FLAC encoder for the upcoming TrueHD / DTS / DTS-HD-MA bridge
-    # (DrHurt's `-c:a flac` trick from AetherEngine#1). Those codecs
-    # aren't legal in fMP4 / AVPlayer's decode set, but FLAC is. The
-    # bridge decodes the source's TrueHD or DTS packets to PCM via
-    # the existing truehd / dca decoders, re-encodes losslessly to
-    # FLAC, and muxes the FLAC stream alongside the video so AVPlayer
-    # plays it natively. Adds ~50 KB to the binary.
+    # FLAC encoder kept for stereo / lossless paths and CLI tools.
     --enable-encoder=flac
+    # EAC3 encoder for the multichannel bridge. AVPlayer decodes FLAC
+    # to LPCM and routes that through the active HDMI port's channel
+    # count — most consumer soundbars (Sonos Arc and equivalents)
+    # accept multichannel only via bitstream codecs (EAC3, AC3, DD+,
+    # Atmos), not LPCM, so a 7.1 FLAC track gets downmixed to stereo
+    # at the route. EAC3 5.1 bridges that gap: AVPlayer hands the
+    # encoded bitstream to HDMI, the sink decodes its own 5.1 mix,
+    # surround works on every device that decodes EAC3 (which is
+    # essentially every modern AVR + soundbar). Trade-off: lossy
+    # (~384 kbps for 5.1) versus the FLAC bridge's lossless, but
+    # tvOS doesn't expose LPCM-side audio passthrough that the
+    # lossless was actually delivering on most setups anyway.
+    --enable-encoder=eac3
 )
 
 build_one() {
