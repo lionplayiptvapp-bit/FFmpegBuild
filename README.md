@@ -32,7 +32,9 @@ Full FFmpeg builds for iOS land at 40-70 MB because they bundle a TLS stack, enc
 | libavutil      | Shared primitives                                     |
 | libswresample  | Audio resampling / channel remap / format convert     |
 | libswscale     | Pixel-format convert (YUV → NV12 / P010) for the SW-decode path |
+| libavfilter    | Trimmed filter set (zscale + tonemap + colorspace) for HDR → SDR still extraction |
 | **dav1d**      | Fast AV1 software decoder (separate xcframework)      |
+| **zimg**       | zscale's resampling / colorspace backend (separate xcframework, link-only) |
 
 ## Out
 
@@ -41,7 +43,8 @@ Anything the app layer should already handle or doesn't need:
 - Network / TLS: FFmpeg reads from an `avio_alloc_context` callback, you wire `URLSession` to it
 - Encoders, except FLAC and EAC3 (kept for the audio bridge that re-encodes non-streamable sources like TrueHD / DTS / DTS-HD MA. FLAC for the lossless 7.1 path, EAC3 5.1 for the default soundbar-compat path that surfaces surround via HDMI bitstream tunnel)
 - Muxers, except MP4 / MOV / HLS (kept for the HLS-fMP4 producer that wraps streams for AVPlayer)
-- libavfilter, libavdevice
+- libavdevice (libavfilter is included but trimmed to a handful of filters, see In)
+- Most filters: libavfilter ships only buffer / buffersink / format / scale / zscale / tonemap / colorspace
 - Programs (`ffmpeg`, `ffplay`, `ffprobe`)
 - Hardware accel layers other than VideoToolbox
 - Text subtitle rendering (do that in SwiftUI)
@@ -70,7 +73,7 @@ dependencies: [
 .product(name: "FFmpegBuild", package: "FFmpegBuild")
 ```
 
-Then import the modules you need: `Libavformat`, `Libavcodec`, `Libavutil`, `Libswresample`, `Libdav1d`.
+Then import the modules you need: `Libavformat`, `Libavcodec`, `Libavutil`, `Libswresample`, `Libswscale`, `Libavfilter`, `Libdav1d`. (`Libzimg` is a link-only backend for `zscale`; you don't import it directly.)
 
 ## Decoder support
 
