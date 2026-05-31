@@ -21,6 +21,8 @@ let package = Package(
         .library(name: "Libswresample", targets: ["Libswresample"]),
         .library(name: "Libswscale", targets: ["Libswscale"]),
         .library(name: "Libdav1d", targets: ["Libdav1d"]),
+        .library(name: "Libavfilter", targets: ["Libavfilter"]),
+        .library(name: "Libzimg", targets: ["Libzimg"]),
     ],
     targets: [
         // Umbrella target that links all FFmpeg libraries + dav1d + system frameworks
@@ -32,7 +34,9 @@ let package = Package(
                 "Libavutil",
                 "Libswresample",
                 "Libswscale",
+                "Libavfilter",
                 "Libdav1d",
+                "Libzimg",
             ],
             path: "Sources/FFmpegBuild",
             linkerSettings: [
@@ -43,6 +47,7 @@ let package = Package(
                 .linkedLibrary("z"),
                 .linkedLibrary("bz2"),
                 .linkedLibrary("iconv"),
+                .linkedLibrary("c++"),
             ]
         ),
         // Prebuilt xcframeworks (created by build.sh)
@@ -52,5 +57,12 @@ let package = Package(
         .binaryTarget(name: "Libswresample", path: "Sources/Libswresample.xcframework"),
         .binaryTarget(name: "Libswscale", path: "Sources/Libswscale.xcframework"),
         .binaryTarget(name: "Libdav1d", path: "Sources/Libdav1d.xcframework"),
+        .binaryTarget(name: "Libavfilter", path: "Sources/Libavfilter.xcframework"),
+        .binaryTarget(name: "Libzimg", path: "Sources/Libzimg.xcframework"),
+        .testTarget(
+            name: "FFmpegBuildTests",
+            dependencies: ["FFmpegBuild", "Libavfilter", "Libavutil"],
+            path: "Tests/FFmpegBuildTests"
+        ),
     ]
 )
