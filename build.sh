@@ -175,6 +175,12 @@ COMMON_FLAGS=(
     --enable-filter=format --enable-filter=scale
     --enable-filter=zscale --enable-filter=tonemap
     --enable-filter=colorspace
+    # Deinterlacers for AetherEngine's software-decode path. Interlaced
+    # H.264 routes to native AVPlayer (which deinterlaces itself), but
+    # interlaced MPEG-2 / VC-1 / MPEG-4 (DVD rips, SD broadcast channels)
+    # decode through libavcodec and would render with combing otherwise.
+    # bwdif is the primary (better quality), yadif the fallback.
+    --enable-filter=bwdif --enable-filter=yadif
     --enable-videotoolbox --enable-audiotoolbox
     --enable-libdav1d
     --enable-protocol=file --enable-protocol=pipe --enable-protocol=data

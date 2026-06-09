@@ -25,4 +25,13 @@ struct FilterAvailabilityTests {
         #expect(avfilter_get_by_name("format") != nil)
         #expect(avfilter_get_by_name("colorspace") != nil)
     }
+
+    @Test("deinterlacers are available")
+    func deinterlacersAvailable() {
+        // AetherEngine's software-decode path deinterlaces interlaced
+        // MPEG-2 / VC-1 / MPEG-4 through bwdif (yadif fallback); if a
+        // future build drops them the engine silently renders combing.
+        #expect(avfilter_get_by_name("bwdif") != nil)
+        #expect(avfilter_get_by_name("yadif") != nil)
+    }
 }
