@@ -192,6 +192,15 @@ COMMON_FLAGS=(
     --enable-demuxer=eac3 --enable-demuxer=flac --enable-demuxer=ogg
     --enable-demuxer=wav --enable-demuxer=mp3 --enable-demuxer=srt
     --enable-demuxer=ass --enable-demuxer=concat --enable-demuxer=data
+    # Raw MPEG-1/2 and MPEG-4 video elementary-stream demuxers. The mpegps
+    # (MPEG Program Stream / DVD VOB) demuxer carries no codec signaling, so
+    # it tags a 0x1E0-0x1EF video stream as request_probe and confirms the
+    # codec via these raw demuxers' probe functions. Without them MPEG-2
+    # video in a Program Stream is never confirmed (the lenient mp3 demuxer
+    # probe wins instead) and no video stream is exposed: DVD-Video ISO
+    # playback shows audio only. The h264/hevc raw demuxers above already
+    # cover H.264/HEVC-in-PS; these add MPEG-2 (DVD) and MPEG-4 Part 2.
+    --enable-demuxer=mpegvideo --enable-demuxer=m4v
     --disable-decoders
     --enable-decoder=h264 --enable-decoder=hevc --enable-decoder=vp8
     --enable-decoder=vp9 --enable-decoder=av1 --enable-decoder=libdav1d
@@ -201,6 +210,11 @@ COMMON_FLAGS=(
     --enable-decoder=mp3float --enable-decoder=opus --enable-decoder=vorbis
     --enable-decoder=truehd --enable-decoder=mlp --enable-decoder=dca --enable-decoder=alac
     --enable-decoder=pcm_s16le --enable-decoder=pcm_s24le --enable-decoder=pcm_f32le
+    # Blu-ray LPCM (PCM_BLURAY): M2TS audio tracks that ship raw LPCM. Not
+    # legal in fMP4, so AetherEngine's AudioBridge decodes to PCM and
+    # re-encodes; without the decoder those tracks are silent. Prep for
+    # Blu-ray ISO support (Phase 2); harmless for everything else.
+    --enable-decoder=pcm_bluray
     # MP2 (MPEG-1 Layer II) decoder for DVD-remux audio tracks that
     # still carry MP2. Not legal in fMP4 so AetherEngine's AudioBridge
     # decodes to PCM and re-encodes as FLAC. ~5 KB binary cost.
