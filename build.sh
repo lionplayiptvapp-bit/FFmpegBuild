@@ -230,6 +230,13 @@ COMMON_FLAGS=(
     --enable-parser=vp8 --enable-parser=vp9 --enable-parser=av1
     --enable-bsf=aac_adtstoasc --enable-bsf=h264_mp4toannexb
     --enable-bsf=hevc_mp4toannexb --enable-bsf=extract_extradata
+    # dca_core extracts the mandatory DTS core substream from a DTS-HD
+    # (MA / HRA) packet at the bitstream level. AetherEngine's AudioBridge
+    # runs DTS through it before decode so the lossless XLL extension (which
+    # residual-codes channels and can fail to reconstruct standalone) is
+    # dropped up front; the bridge re-encodes lossy anyway. Yields clean
+    # full-rate 5.1/7.1 core PCM on every frame (AetherEngine #64).
+    --enable-bsf=dca_core
     # MP4 / mov muxers underlie the per-fragment fmp4 segment output;
     # the hls muxer drives the segmentation + per-segment styp emission
     # + playlist for AetherEngine's HLSVideoEngine. We override
