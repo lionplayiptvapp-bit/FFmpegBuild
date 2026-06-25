@@ -228,6 +228,24 @@ COMMON_FLAGS=(
     --enable-parser=mpegaudio --enable-parser=mpeg4video
     --enable-parser=mpegvideo --enable-parser=opus --enable-parser=vorbis
     --enable-parser=vp8 --enable-parser=vp9 --enable-parser=av1
+    # dca parser coalesces a DTS core frame and the following DTS-HD extension
+    # substream (EXSS) into one packet. Without it, the MPEG-TS demuxer hands the
+    # decoder the core (0x7FFE8001) and the EXSS (0x64582025) as SEPARATE packets,
+    # so a DTS-HD MA EXSS arrives with no core and the decoder rejects every frame
+    # with "Residual encoded channels are present without core" (silent audio on
+    # Blu-ray M2TS; AetherEngine #64). Matroska is unaffected (its blocks are
+    # already whole frames), which is why only the .m2ts path was silent.
+    --enable-parser=dca
+    # Same framing-completeness class as dca, for the other enabled decoders whose
+    # frames the MPEG-TS / MPEG-PS demuxer can only deliver correctly with a parser:
+    #   mlp  -> TrueHD / MLP (common on Blu-ray M2TS; the AudioBridge decodes it).
+    #           Without it, TrueHD access units mis-frame exactly like DTS-HD MA did.
+    #   vc1  -> VC-1 video (Blu-ray, WMV); the software decode path needs framed BDUs.
+    #   dvbsub / dvdsub -> DVB (live TS) and DVD (Program Stream / VOB) bitmap subtitles.
+    #           Defensive: matches a stock FFmpeg build so live-TV / DVD subtitle
+    #           framing is correct rather than relying on PES-aligned delivery.
+    --enable-parser=mlp --enable-parser=vc1
+    --enable-parser=dvbsub --enable-parser=dvdsub
     --enable-bsf=aac_adtstoasc --enable-bsf=h264_mp4toannexb
     --enable-bsf=hevc_mp4toannexb --enable-bsf=extract_extradata
     # dca_core extracts the mandatory DTS core substream from a DTS-HD
