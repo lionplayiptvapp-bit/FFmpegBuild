@@ -4,7 +4,9 @@
 # Includes dav1d (fast AV1 software decoder).
 #
 # Usage:
-#   ./build.sh          # Build all platforms
+#   ./build.sh          # Build all platforms as dynamic frameworks (the shipped shape)
+#   ./build.sh static   # Build static variant (not App Store friendly for closed-source apps)
+#   ./build.sh package  # Repackage frameworks from existing build products
 #   ./build.sh clean    # Remove all build artifacts
 #
 set -eo pipefail  # pipefail so `... | tail -N` doesn't swallow configure/make errors
@@ -24,6 +26,30 @@ FFMPEG_SRC="${BUILD_DIR}/ffmpeg-src"
 DAV1D_SRC="${BUILD_DIR}/dav1d-src"
 ZIMG_SRC="${BUILD_DIR}/zimg-src"
 ZVBI_SRC="${BUILD_DIR}/zvbi-src"
+
+# Dynamic (dylib-in-framework) is the shipped shape: LGPL requires that end
+# users can swap the FFmpeg libraries, which embedded dynamic frameworks
+# permit and a statically linked closed-source binary does not. Static stays
+# available for people who build themselves and can meet LGPL 6(a) instead.
+MODE="build"
+LINKAGE="dynamic"
+for ARG in "$@"; do
+    case "${ARG}" in
+        clean)   MODE="clean" ;;
+        package) MODE="package" ;;
+        static)  LINKAGE="static" ;;
+        dynamic) LINKAGE="dynamic" ;;
+        *) echo "Unknown argument: ${ARG}"; exit 1 ;;
+    esac
+done
+
+if [[ "${LINKAGE}" == "static" ]]; then
+    CONFIGURE_LINK_FLAGS=(--enable-static --disable-shared)
+    MESON_LIBRARY="static"
+else
+    CONFIGURE_LINK_FLAGS=(--disable-static --enable-shared)
+    MESON_LIBRARY="shared"
+fi
 
 # ─────────────────────────────────────────────────────────
 
@@ -71,6 +97,71 @@ fetch_zvbi() {
     ( cd "${ZVBI_SRC}" && PATH="/opt/homebrew/opt/libtool/libexec/gnubin:/opt/homebrew/opt/gettext/bin:${PATH}" NOCONFIGURE=1 ./autogen.sh )
 }
 
+patch_zvbi() {
+    # License hygiene: zvbi's library sources are LGPL-2+/MIT EXCEPT
+    # packet-830.c + pdc.c (GPL-2) and exp-vtx.c (GPL-2+), see zvbi COPYING.md.
+    # GPL code must not ship in this LGPL build, so those files are dropped.
+    # packet.c calls two packet-830.c entry points behind the
+    # VBI_EVENT_LOCAL_TIME / VBI_EVENT_PROG_ID event masks, which no consumer
+    # of this build registers (FFmpeg's teletext decoder only registers
+    # VBI_EVENT_TTX_PAGE); LGPL stubs reporting decode failure close the link.
+    local MK="${ZVBI_SRC}/src/Makefile.am"
+    grep -q "packet-830-stub.c" "${MK}" && return
+
+    echo "→ Patching zvbi: dropping GPL sources (packet-830.c, pdc.c, exp-vtx.c)"
+    sed -i '' \
+        -e 's/packet-830\.c packet-830\.h \\/packet-830.h packet-830-stub.c \\/' \
+        -e 's/pdc\.c pdc\.h \\/pdc.h \\/' \
+        -e '/exp-vtx\.c \\/d' \
+        "${MK}"
+
+    cat > "${ZVBI_SRC}/src/packet-830-stub.c" << 'EOF'
+/*
+ *  libzvbi -- LGPL stubs for the GPL-2 packet-830.c entry points
+ *
+ *  FFmpegBuild removes the GPL-2 sources packet-830.c and pdc.c from the
+ *  library. packet.c references these two functions behind the
+ *  VBI_EVENT_LOCAL_TIME / VBI_EVENT_PROG_ID event masks; they report
+ *  decode failure so callers drop the packet.
+ *
+ *  Copyright (C) 2026 Vincent Herbst
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Library General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2 of the License, or (at your option) any later version.
+ */
+
+#include <time.h>
+#include <stdint.h>
+
+extern int
+vbi_decode_teletext_8301_local_time (time_t *time, int *seconds_east, const uint8_t *buffer);
+extern int
+vbi_decode_teletext_8302_pdc (void *pid, const uint8_t *buffer);
+
+int
+vbi_decode_teletext_8301_local_time (time_t *time, int *seconds_east, const uint8_t *buffer)
+{
+    (void) time;
+    (void) seconds_east;
+    (void) buffer;
+    return 0;
+}
+
+int
+vbi_decode_teletext_8302_pdc (void *pid, const uint8_t *buffer)
+{
+    (void) pid;
+    (void) buffer;
+    return 0;
+}
+EOF
+
+    # Makefile.am changed; regenerate the build system.
+    ( cd "${ZVBI_SRC}" && PATH="/opt/homebrew/opt/libtool/libexec/gnubin:/opt/homebrew/opt/gettext/bin:${PATH}" NOCONFIGURE=1 ./autogen.sh )
+}
+
 # ─────────────────────────────────────────────────────────
 # dav1d cross-compilation (Meson + Ninja)
 # ─────────────────────────────────────────────────────────
@@ -84,7 +175,7 @@ build_dav1d_one() {
     local SDK_PATH=$(xcrun --sdk "${SDK}" --show-sdk-path)
     local INSTALL_DIR="${BUILD_DIR}/dav1d-thin/${KEY}"
     local WORK_DIR="${BUILD_DIR}/dav1d-work/${KEY}"
-    rm -rf "${WORK_DIR}"
+    rm -rf "${WORK_DIR}" "${INSTALL_DIR}"
     mkdir -p "${WORK_DIR}" "${INSTALL_DIR}"
 
     # Determine CPU family and system for Meson cross file
@@ -103,7 +194,7 @@ strip = '/usr/bin/strip'
 
 [built-in options]
 c_args = ['-arch', '${ARCH}', '-isysroot', '${SDK_PATH}', '-target', '${TARGET}', '-fno-common']
-c_link_args = ['-arch', '${ARCH}', '-isysroot', '${SDK_PATH}', '-target', '${TARGET}']
+c_link_args = ['-arch', '${ARCH}', '-isysroot', '${SDK_PATH}', '-target', '${TARGET}', '-Wl,-headerpad_max_install_names']
 
 [host_machine]
 system = '${SYSTEM}'
@@ -117,7 +208,7 @@ CROSSEOF
     meson setup \
         --cross-file "${WORK_DIR}/cross.txt" \
         --prefix="${INSTALL_DIR}" \
-        --default-library=static \
+        --default-library="${MESON_LIBRARY}" \
         --buildtype=release \
         -Denable_tools=false \
         -Denable_examples=false \
@@ -144,7 +235,7 @@ build_zimg_one() {
     local SDK_PATH=$(xcrun --sdk "${SDK}" --show-sdk-path)
     local INSTALL_DIR="${BUILD_DIR}/zimg-thin/${KEY}"
     local WORK_DIR="${BUILD_DIR}/zimg-work/${KEY}"
-    rm -rf "${WORK_DIR}"
+    rm -rf "${WORK_DIR}" "${INSTALL_DIR}"
     mkdir -p "${WORK_DIR}" "${INSTALL_DIR}"
 
     local HOST_TRIPLE="aarch64-apple-darwin"
@@ -155,11 +246,11 @@ build_zimg_one() {
     cd "${WORK_DIR}"
     CC="clang ${FLAGS}" \
     CXX="clang++ ${FLAGS}" \
+    LDFLAGS="-Wl,-headerpad_max_install_names" \
     "${ZIMG_SRC}/configure" \
         --host="${HOST_TRIPLE}" \
         --prefix="${INSTALL_DIR}" \
-        --enable-static \
-        --disable-shared \
+        "${CONFIGURE_LINK_FLAGS[@]}" \
         2>&1 | tail -5
 
     make -j$(sysctl -n hw.ncpu) 2>&1 | tail -3
@@ -196,13 +287,13 @@ build_zvbi_one() {
     # rpl_malloc/rpl_realloc, which libzvbi never provides (undefined symbols at the FFmpeg link).
     CC="clang ${FLAGS}" \
     CFLAGS="${FLAGS}" \
+    LDFLAGS="-Wl,-headerpad_max_install_names" \
     ac_cv_func_malloc_0_nonnull=yes \
     ac_cv_func_realloc_0_nonnull=yes \
     "${ZVBI_SRC}/configure" \
         --host="${HOST_TRIPLE}" \
         --prefix="${INSTALL_DIR}" \
-        --enable-static \
-        --disable-shared \
+        "${CONFIGURE_LINK_FLAGS[@]}" \
         --disable-nls \
         --disable-tests \
         --disable-examples \
@@ -222,7 +313,7 @@ build_zvbi_one() {
 # ─────────────────────────────────────────────────────────
 
 COMMON_FLAGS=(
-    --enable-static --disable-shared --enable-pic
+    --enable-pic
     --enable-optimizations --enable-stripping --disable-debug
     --disable-autodetect --disable-doc --disable-programs
     --disable-devices --disable-outdevs --disable-indevs
@@ -357,10 +448,11 @@ build_one() {
     local DAV1D_DIR="${BUILD_DIR}/dav1d-thin/${KEY}"
     local ZIMG_DIR="${BUILD_DIR}/zimg-thin/${KEY}"
     local ZVBI_DIR="${BUILD_DIR}/zvbi-thin/${KEY}"
+    rm -rf "${INSTALL_DIR}"
     mkdir -p "${INSTALL_DIR}"
 
     local CFLAGS="-arch ${ARCH} -isysroot ${SDK_PATH} -target ${TARGET} -fno-common -DHAVE_FORK=0"
-    local LDFLAGS="-arch ${ARCH} -isysroot ${SDK_PATH} -target ${TARGET}"
+    local LDFLAGS="-arch ${ARCH} -isysroot ${SDK_PATH} -target ${TARGET} -Wl,-headerpad_max_install_names"
 
     # Add dav1d include/lib paths
     CFLAGS="${CFLAGS} -I${DAV1D_DIR}/include"
@@ -394,6 +486,7 @@ build_one() {
         --extra-cflags="${CFLAGS}" \
         --extra-ldflags="${LDFLAGS}" \
         "${ASM_FLAGS[@]}" \
+        "${CONFIGURE_LINK_FLAGS[@]}" \
         "${COMMON_FLAGS[@]}" \
         2>&1 | tail -5
 
@@ -401,6 +494,39 @@ build_one() {
     make install 2>&1 | tail -3
 
     echo "✓ FFmpeg ${KEY} → ${INSTALL_DIR}"
+}
+
+# The compilers record absolute build-directory install names (FFmpeg,
+# libtool) or bare @rpath dylib names (meson). Rewrite the binary's own id
+# and every reference to a sibling library to @rpath framework paths so the
+# frameworks resolve when embedded in an app bundle.
+fix_install_names() {
+    local BIN="$1" FW="$2" PLATFORM="$3"
+
+    local SUBPATH="${FW}.framework/${FW}"
+    [[ "${PLATFORM}" == "macos" ]] && SUBPATH="${FW}.framework/Versions/A/${FW}"
+    install_name_tool -id "@rpath/${SUBPATH}" "${BIN}"
+
+    local PAIRS=(
+        "libavcodec:Libavcodec" "libavformat:Libavformat" "libavutil:Libavutil"
+        "libswresample:Libswresample" "libswscale:Libswscale" "libavfilter:Libavfilter"
+        "libdav1d:Libdav1d" "libzimg:Libzimg" "libzvbi:Libzvbi"
+    )
+    local DEPS
+    DEPS=(${(f)"$(otool -L "${BIN}" | awk 'NR>1 {print $1}')"})
+    local DEP PAIR NAME TARGET_FW NEW
+    for DEP in "${DEPS[@]}"; do
+        local BASE="${DEP##*/}"
+        for PAIR in "${PAIRS[@]}"; do
+            NAME="${PAIR%%:*}"
+            TARGET_FW="${PAIR##*:}"
+            if [[ "${BASE}" == ${NAME}.dylib || "${BASE}" == ${NAME}.*.dylib ]]; then
+                NEW="${TARGET_FW}.framework/${TARGET_FW}"
+                [[ "${PLATFORM}" == "macos" ]] && NEW="${TARGET_FW}.framework/Versions/A/${TARGET_FW}"
+                install_name_tool -change "${DEP}" "@rpath/${NEW}" "${BIN}"
+            fi
+        done
+    done
 }
 
 make_framework() {
@@ -452,21 +578,28 @@ make_framework() {
     fi
 
     # Lipo
+    local EXT="a"
+    [[ "${LINKAGE}" == "dynamic" ]] && EXT="dylib"
     local INPUTS=()
     for K in "${KEYS[@]}"; do
         local LIB_PATH
         if [[ "${LIB}" == "dav1d" ]]; then
-            LIB_PATH="${BUILD_DIR}/dav1d-thin/${K}/lib/libdav1d.a"
+            LIB_PATH="${BUILD_DIR}/dav1d-thin/${K}/lib/libdav1d.${EXT}"
         elif [[ "${LIB}" == "zimg" ]]; then
-            LIB_PATH="${BUILD_DIR}/zimg-thin/${K}/lib/libzimg.a"
+            LIB_PATH="${BUILD_DIR}/zimg-thin/${K}/lib/libzimg.${EXT}"
         elif [[ "${LIB}" == "zvbi" ]]; then
-            LIB_PATH="${BUILD_DIR}/zvbi-thin/${K}/lib/libzvbi.a"
+            LIB_PATH="${BUILD_DIR}/zvbi-thin/${K}/lib/libzvbi.${EXT}"
         else
-            LIB_PATH="${BUILD_DIR}/thin/${K}/lib/${LIB}.a"
+            LIB_PATH="${BUILD_DIR}/thin/${K}/lib/${LIB}.${EXT}"
         fi
         INPUTS+=("${LIB_PATH}")
     done
     lipo -create "${INPUTS[@]}" -output "${FW_DIR}/${FW}"
+
+    if [[ "${LINKAGE}" == "dynamic" ]]; then
+        fix_install_names "${FW_DIR}/${FW}" "${FW}" "${PLATFORM}"
+        strip -x "${FW_DIR}/${FW}" 2>/dev/null || true
+    fi
 
     # Module map
     cat > "${FW_DIR}/Modules/module.modulemap" << EOF
@@ -486,12 +619,14 @@ EOF
     # MinimumOSVersion is *lower* than the host app's deployment
     # target (ITMS-90208). We pick floors that match the apps that
     # actually consume this build (JellySeeTV is tvOS 26+).
-    local MIN_OS
+    local MIN_OS SUPPORTED_PLATFORM
     case "${PLATFORM}" in
-        ios|ios-sim)   MIN_OS="26.0" ;;
-        tvos|tvos-sim) MIN_OS="26.0" ;;
-        macos)         MIN_OS="14.0" ;;
-        *)             MIN_OS="26.0" ;;
+        ios)         MIN_OS="26.0"; SUPPORTED_PLATFORM="iPhoneOS" ;;
+        isimulator)  MIN_OS="26.0"; SUPPORTED_PLATFORM="iPhoneSimulator" ;;
+        tvos)        MIN_OS="26.0"; SUPPORTED_PLATFORM="AppleTVOS" ;;
+        tvsimulator) MIN_OS="26.0"; SUPPORTED_PLATFORM="AppleTVSimulator" ;;
+        macos)       MIN_OS="14.0"; SUPPORTED_PLATFORM="MacOSX" ;;
+        *)           MIN_OS="26.0"; SUPPORTED_PLATFORM="iPhoneOS" ;;
     esac
 
     cat > "${FW_DIR}/Info.plist" << EOF
@@ -504,6 +639,8 @@ EOF
 <key>CFBundleVersion</key><string>1.0</string>
 <key>CFBundleShortVersionString</key><string>1.0</string>
 <key>CFBundlePackageType</key><string>FMWK</string>
+<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+<key>CFBundleSupportedPlatforms</key><array><string>${SUPPORTED_PLATFORM}</string></array>
 <key>MinimumOSVersion</key><string>${MIN_OS}</string>
 </dict></plist>
 EOF
@@ -528,6 +665,12 @@ EOF
         ln -s "Versions/Current/Headers"   "${FW_DIR}/Headers"
         ln -s "Versions/Current/Modules"   "${FW_DIR}/Modules"
         ln -s "Versions/Current/Resources" "${FW_DIR}/Resources"
+    fi
+
+    # install_name_tool and strip invalidate the linker's ad-hoc signature;
+    # re-sign so the dylibs stay loadable (Xcode re-signs on embed anyway).
+    if [[ "${LINKAGE}" == "dynamic" ]]; then
+        codesign --force --sign - "${FW_DIR}"
     fi
 }
 
@@ -564,7 +707,7 @@ make_xcframeworks() {
 
 # ─────────────────────────────────────────────────────────
 
-if [[ "$1" == "clean" ]]; then
+if [[ "${MODE}" == "clean" ]]; then
     echo "Cleaning..."
     rm -rf "${BUILD_DIR}" "${OUTPUT_DIR}/"*.xcframework
     echo "✓ Clean"
@@ -575,24 +718,27 @@ fi
 # framework + xcframework packaging steps using whatever's already
 # in build/thin and build/dav1d-thin. Useful when the only change
 # is to header-exclusion lists or framework Info.plist values, so
-# we don't burn a full multi-arch FFmpeg rebuild.
-if [[ "$1" == "package" ]]; then
+# we don't burn a full multi-arch FFmpeg rebuild. Pass the same
+# linkage argument the compile ran with.
+if [[ "${MODE}" == "package" ]]; then
     rm -rf "${BUILD_DIR}/frameworks" "${OUTPUT_DIR}/"*.xcframework 2>/dev/null || true
     make_xcframeworks
     echo ""
-    echo "✓ Repackage complete"
+    echo "✓ Repackage complete (${LINKAGE})"
     exit 0
 fi
 
 echo "╔══════════════════════════════════════╗"
 echo "║  FFmpegBuild: FFmpeg + dav1d (AV1)  ║"
 echo "║  VideoToolbox HW + Metal ready      ║"
+echo "║  Linkage: ${LINKAGE}                     ║"
 echo "╚══════════════════════════════════════╝"
 
 fetch_ffmpeg
 fetch_dav1d
 fetch_zimg
 fetch_zvbi
+patch_zvbi
 
 # Build dav1d for all platforms first
 build_dav1d_one ios-arm64          iphoneos         arm64  arm64-apple-ios16.0                    16.0

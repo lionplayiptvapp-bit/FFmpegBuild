@@ -11,7 +11,7 @@
   <a href="https://swiftpackageindex.com/superuser404notfound/FFmpegBuild"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fsuperuser404notfound%2FFFmpegBuild%2Fbadge%3Ftype%3Dplatforms"></a>
   <img src="https://img.shields.io/badge/FFmpeg-8.1-brightgreen">
   <img src="https://img.shields.io/badge/dav1d-1.5.1-blue">
-  <img src="https://img.shields.io/badge/license-LGPL--3.0-lightgrey">
+  <img src="https://img.shields.io/badge/license-LGPL--2.1-lightgrey">
   <a href="https://ko-fi.com/superuser404"><img src="https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=kofi&logoColor=white"></a>
 </p>
 
@@ -52,14 +52,15 @@ Anything the app layer should already handle or doesn't need:
 ## Build
 
 ```sh
-./build.sh          # all platforms
-./build.sh tvos     # single platform
+./build.sh          # all platforms, dynamic frameworks (the shipped shape)
+./build.sh static   # static variant, for apps that can meet LGPL 6(a) themselves
+./build.sh package  # repackage frameworks without recompiling
 ./build.sh clean    # wipe everything
 ```
 
-Needs Xcode 16+ and roughly 10-30 minutes depending on your machine. Both FFmpeg and dav1d sources clone on first run.
+Needs Xcode 16+ and roughly 10-30 minutes depending on your machine. All sources (FFmpeg, dav1d, zimg, libzvbi) clone on first run.
 
-Output lands in `Sources/` as xcframeworks, ready to consume via Swift Package Manager.
+Output lands in `Sources/` as xcframeworks, ready to consume via Swift Package Manager. The shipped xcframeworks contain **dynamic frameworks** (dylib-in-framework, `@rpath` install names); Xcode embeds and signs them in the app bundle automatically when you link the package. That is what keeps the LGPL relink requirement satisfiable for closed-source apps, see License below.
 
 ## Use
 
@@ -88,13 +89,12 @@ HDR metadata (BT.2020, SMPTE ST 2084 / PQ, HLG, DV RPU) is preserved end-to-end 
 
 ## Size
 
-Per architecture, release configuration:
+Release configuration, dynamic framework binaries as embedded in the app:
 
-| Target                | FFmpeg    | dav1d    | Total     |
-| --------------------- | --------- | -------- | --------- |
-| iOS / tvOS arm64      | ~9.4 MB   | ~1 MB    | ~10.4 MB  |
-| macOS arm64           | ~9.5 MB   | ~1 MB    | ~10.5 MB  |
-| macOS x86_64          | ~9.3 MB   | ~2.8 MB  | ~12.1 MB  |
+| Target                            | FFmpeg    | dav1d    | Total     |
+| --------------------------------- | --------- | -------- | --------- |
+| iOS / tvOS arm64                  | ~8.7 MB   | ~0.8 MB  | ~9.5 MB   |
+| macOS universal (arm64 + x86_64)  | ~18.1 MB  | ~2.4 MB  | ~20.5 MB  |
 
 Assembly-optimized paths are enabled where the Apple toolchain permits.
 
@@ -104,7 +104,27 @@ This package is vibe-coded, assembled and maintained by [Vincent Herbst](https:/
 
 ## License
 
-[LGPL-3.0](LICENSE), same as upstream FFmpeg. App Store compatible when linked dynamically.
+**LGPL-2.1-or-later** ([LICENSE](LICENSE)), matching upstream FFmpeg's default license. The build enables neither `--enable-gpl` nor `--enable-version3`, so no GPL or LGPL-3.0 components are compiled in. Per component:
+
+| Component | License |
+| --- | --- |
+| FFmpeg (all six libraries) | LGPL-2.1-or-later |
+| dav1d | BSD-2-Clause |
+| zimg | WTFPL |
+| libzvbi (library sources) | LGPL-2.0-or-later, `ure.c` MIT |
+| Build scripts / SPM stubs (this repo) | LGPL-2.1-or-later |
+
+libzvbi's three GPL-2 source files (`packet-830.c`, `pdc.c`, `exp-vtx.c`) are **excluded from the build** and the two referenced entry points are replaced with LGPL stubs (`build.sh`, `patch_zvbi`), so the shipped binaries contain no GPL code. All license texts live in [LICENSES/](LICENSES/).
+
+### Shipping in an App Store app
+
+The xcframeworks are dynamic frameworks on purpose: LGPL section 6 requires that end users can swap in a modified version of the library. With dynamic linking your app binary stays yours (closed source is fine) and the obligations reduce to:
+
+1. Link the package normally; Xcode embeds the frameworks in `YourApp.app/Frameworks/`. Do not merge them into the app binary (no mergeable-library trickery), that would recreate static linking.
+2. Reproduce the license texts from [LICENSES/](LICENSES/) somewhere reasonable (acknowledgements screen, bundled file).
+3. State that your app uses FFmpeg and friends, and link to the source of the exact build you ship (a tagged release of this repo, or your fork if you modified it).
+
+If you build the `static` variant instead, those steps are not sufficient: LGPL 6(a) then requires you to provide your app's object files (or full source) so users can relink. That is realistic for open-source apps and rarely anything else, which is why static is not the shipped shape.
 
 ---
 
