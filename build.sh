@@ -62,6 +62,30 @@ fetch_ffmpeg() {
     git clone --depth 1 --branch "${FFMPEG_VERSION}" "${FFMPEG_REPO}" "${FFMPEG_SRC}"
 }
 
+patch_ffmpeg() {
+    # Upstream bug in vf_yadif_videotoolbox.m (present through n8.1.2): call_kernel gets
+    # commandBuffer / computeCommandEncoder from property getters, which return AUTORELEASED
+    # (+0) objects under FFmpeg's non-ARC ObjC build, then releases them manually via
+    # ff_objc_release, an over-release. (The s->mtl* releases in uninit ARE correct: those are
+    # +1 objects from newCommandQueue/newLibrary etc.) ffmpeg's CLI never pops a pool on its
+    # filter threads so it goes unnoticed; a host app's GCD queues pop their last-resort pool
+    # when the work block ends, crashing at session teardown (EXC_BAD_ACCESS in
+    # AutoreleasePoolPage::releaseUntil). Fix: wrap the kernel call in @autoreleasepool and drop
+    # the manual releases, so the pool pop is the single balanced release and Metal transients
+    # drain per frame.
+    local F="${FFMPEG_SRC}/libavfilter/vf_yadif_videotoolbox.m"
+    grep -q "@autoreleasepool" "${F}" && return
+    echo "→ Patching FFmpeg: balance autoreleased Metal objects in yadif_videotoolbox"
+    perl -0777 -pi -e '
+s#\{\n    YADIFVTContext \*s = ctx->priv;\n    id<MTLCommandBuffer> buffer#{\n    YADIFVTContext *s = ctx->priv;\n    \@autoreleasepool {\n    id<MTLCommandBuffer> buffer#;
+s#    ff_objc_release\(&encoder\);\n    ff_objc_release\(&buffer\);\n\}#    } // \@autoreleasepool: buffer + encoder are +0 autoreleased by their getters.\n      // Upstream released them manually here (over-release); the pool pop above\n      // is the single balanced release. See FFmpegBuild build.sh patch_ffmpeg.\n}#;
+' "${F}"
+    if ! grep -q "@autoreleasepool" "${F}"; then
+        echo "ERROR: yadif_videotoolbox autorelease patch did not apply (upstream source changed?)"
+        exit 1
+    fi
+}
+
 fetch_dav1d() {
     if [[ -d "${DAV1D_SRC}" ]]; then
         echo "→ dav1d source already exists, skipping clone"
@@ -332,11 +356,23 @@ COMMON_FLAGS=(
     --enable-filter=zscale --enable-filter=tonemap
     --enable-filter=colorspace
     # Deinterlacers for AetherEngine's software-decode path. Interlaced
-    # H.264 routes to native AVPlayer (which deinterlaces itself), but
-    # interlaced MPEG-2 / VC-1 / MPEG-4 (DVD rips, SD broadcast channels)
-    # decode through libavcodec and would render with combing otherwise.
-    # bwdif is the primary (better quality), yadif the fallback.
+    # Deinterlacers for AetherEngine's software-decode path: interlaced
+    # MPEG-2 / VC-1 / MPEG-4 (DVD rips, SD broadcast) plus interlaced H.264
+    # (AetherEngine #107: AVPlayer does not deinterlace, so 1080i/576i H.264
+    # routes software too). Without these it all renders with combing. bwdif
+    # is the CPU primary (better quality), yadif the fallback.
     --enable-filter=bwdif --enable-filter=yadif
+    # Hardware deinterlacer: yadif_videotoolbox runs the yadif kernel as a
+    # Metal compute shader over AV_PIX_FMT_VIDEOTOOLBOX frames (no
+    # bwdif_videotoolbox exists upstream). hwupload bridges software-decoded
+    # frames into a VideoToolbox hwframes context so the GPU can deinterlace
+    # at field rate (mode=send_field) without the 2x CPU cost of sw bwdif.
+    # The dependency chain is "metal corevideo videotoolbox"; Metal is
+    # normally autodetected but --disable-autodetect turns it off, so enable
+    # it explicitly. The .metal kernel compiles at build time via
+    # --metalcc / --metallib, overridden per slice in build_one.
+    --enable-filter=yadif_videotoolbox --enable-filter=hwupload
+    --enable-metal
     --enable-videotoolbox --enable-audiotoolbox
     --enable-libdav1d
     --enable-protocol=file --enable-protocol=pipe --enable-protocol=data
@@ -469,6 +505,17 @@ build_one() {
     local ASM_FLAGS=(--enable-neon)
     [[ "${ARCH}" == "x86_64" ]] && ASM_FLAGS=(--disable-asm --disable-neon)
 
+    # Metal shader cross-compilation for yadif_videotoolbox. The compiled
+    # metallib is embedded into libavfilter and loaded at runtime with
+    # newLibraryWithData:, so it must target the slice's SDK/OS. configure's
+    # default (xcrun -sdk macosx metal) yields a macOS metallib that fails to
+    # load on iOS/tvOS. AIR is arch-independent; air64 covers arm64 + x86_64.
+    local AIR_TARGET="${TARGET/${ARCH}/air64}"
+    local METAL_FLAGS=(
+        --metalcc="xcrun -sdk ${SDK} metal -target ${AIR_TARGET}"
+        --metallib="xcrun -sdk ${SDK} metallib"
+    )
+
     local WORK_DIR="${BUILD_DIR}/work/${KEY}"
     rm -rf "${WORK_DIR}"
     mkdir -p "${WORK_DIR}"
@@ -486,6 +533,7 @@ build_one() {
         --extra-cflags="${CFLAGS}" \
         --extra-ldflags="${LDFLAGS}" \
         "${ASM_FLAGS[@]}" \
+        "${METAL_FLAGS[@]}" \
         "${CONFIGURE_LINK_FLAGS[@]}" \
         "${COMMON_FLAGS[@]}" \
         2>&1 | tail -5
@@ -735,6 +783,7 @@ echo "║  Linkage: ${LINKAGE}                     ║"
 echo "╚══════════════════════════════════════╝"
 
 fetch_ffmpeg
+patch_ffmpeg
 fetch_dav1d
 fetch_zimg
 fetch_zvbi
