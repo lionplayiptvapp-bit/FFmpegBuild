@@ -35,6 +35,7 @@ Full FFmpeg builds for iOS land at 40-70 MB because they bundle a TLS stack, enc
 | libavfilter    | Trimmed filter set: zscale + tonemap + colorspace for HDR → SDR still extraction, bwdif + yadif for CPU deinterlacing on the SW-decode path, yadif_videotoolbox + hwupload for GPU (Metal) deinterlacing of VideoToolbox frames |
 | **dav1d**      | Fast AV1 software decoder (separate xcframework)      |
 | **zimg**       | zscale's resampling / colorspace backend (separate xcframework, link-only) |
+| **libzvbi**    | DVB teletext decoder backend for `libzvbi_teletext` (separate xcframework, link-only) |
 
 ## Out
 
@@ -76,25 +77,25 @@ dependencies: [
 
 Pin `branch: "main"` instead of a version if you want to track the latest rebuilds (that is how [AetherEngine](https://github.com/superuser404notfound/AetherEngine) consumes it).
 
-Then import the modules you need: `Libavformat`, `Libavcodec`, `Libavutil`, `Libswresample`, `Libswscale`, `Libavfilter`, `Libdav1d`. (`Libzimg` is a link-only backend for `zscale`; you don't import it directly.) The umbrella `FFmpegBuild` product links all of them plus the system frameworks (AudioToolbox, CoreMedia, CoreVideo, VideoToolbox) in one shot.
+Then import the modules you need: `Libavformat`, `Libavcodec`, `Libavutil`, `Libswresample`, `Libswscale`, `Libavfilter`, `Libdav1d`. (`Libzimg` is a link-only backend for `zscale`, and `Libzvbi` a link-only backend for the teletext decoder; you don't import either directly.) The umbrella `FFmpegBuild` product links all of them plus the system frameworks (AudioToolbox, CoreMedia, CoreVideo, VideoToolbox) in one shot.
 
 ## Decoder support
 
 - **Video (hardware via VideoToolbox)**: H.264, HEVC up to Main10 (HDR10 / DV Profile 8)
 - **Video (software)**: AV1 (dav1d), VP9, VP8, MPEG-2, MPEG-4, VC-1
 - **Audio**: AAC, AC3, EAC3 (incl. JOC detection for Atmos), FLAC, MP2, MP3, Opus, Vorbis, TrueHD, MLP, DTS, ALAC, PCM (incl. Blu-ray LPCM via `pcm_bluray`)
-- **Subtitles**: SRT, ASS, SSA, WebVTT, PGS, DVB, DVD
+- **Subtitles**: SRT, ASS, SSA, WebVTT, PGS, DVB subtitle, DVB teletext (via libzvbi), DVD
 
 HDR metadata (BT.2020, SMPTE ST 2084 / PQ, HLG, DV RPU) is preserved end-to-end so the decode pipeline can tag frames correctly.
 
 ## Size
 
-Release configuration, dynamic framework binaries as embedded in the app:
+Release configuration, dynamic framework binaries as embedded in the app (all six FFmpeg libraries plus the dav1d, zimg and zvbi backend frameworks):
 
-| Target                            | FFmpeg    | dav1d    | Total     |
-| --------------------------------- | --------- | -------- | --------- |
-| iOS / tvOS arm64                  | ~8.7 MB   | ~0.8 MB  | ~9.5 MB   |
-| macOS universal (arm64 + x86_64)  | ~18.1 MB  | ~2.4 MB  | ~20.5 MB  |
+| Target                            | FFmpeg    | dav1d    | zimg     | zvbi     | Total     |
+| --------------------------------- | --------- | -------- | -------- | -------- | --------- |
+| iOS / tvOS arm64                  | ~8.2 MB   | ~0.7 MB  | ~0.3 MB  | ~0.5 MB  | ~9.8 MB   |
+| macOS universal (arm64 + x86_64)  | ~17.3 MB  | ~2.3 MB  | ~0.9 MB  | ~1.0 MB  | ~21.5 MB  |
 
 Assembly-optimized paths are enabled where the Apple toolchain permits.
 
