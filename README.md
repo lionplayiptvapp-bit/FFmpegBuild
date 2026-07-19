@@ -101,10 +101,11 @@ Assembly-optimized paths are enabled where the Apple toolchain permits.
 
 ## Local FFmpeg patches
 
-`build.sh` applies two small patches to the FFmpeg source after checkout (each documented in place):
+`build.sh` applies three small patches to the FFmpeg source after checkout (each documented in place):
 
 - **`patch_ffmpeg`**: balances autoreleased Metal objects in `vf_yadif_videotoolbox.m` (upstream over-release crashes host apps whose GCD queues pop their last-resort autorelease pool at session teardown).
 - **`patch_ffmpeg_pgssub`**: `pgssubdec.c` no longer flushes retained palettes/objects on an Epoch-Continue PCS (composition_state 3). Epoch Continue means the previous epoch continues, so a bare PCS+WDS+END display set legitimately references retained state; upstream's flush dropped such sets with "Invalid palette id 0" (AetherEngine issue 142). Acquisition Point and Epoch Start keep flushing.
+- **`patch_ffmpeg_matroska_tts`**: `matroskadec.c` clamps a Matroska `TrackTimestampScale` other than 1.0 to 1.0 with a warning. Upstream bakes the scale into the stream time base but divides only the cluster component of each block timestamp by it, so packets land on a hybrid axis (cluster + rel x scale) that is silently wrong and non-monotonic in storage order (AetherEngine issue 145). The element is deprecated (RFC 9559 caps it at Matroska v3); clamping keeps every track on the coherent segment axis, in sync with its sibling tracks.
 
 ## Built with
 
