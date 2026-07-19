@@ -109,6 +109,34 @@ s#    state = bytestream_get_byte\(&buf\) >> 6;\n    if \(state != 0\) \{\n     
     fi
 }
 
+patch_ffmpeg_matroska_tts() {
+    # AetherEngine #145: matroskadec handles TrackTimestampScale != 1 incoherently.
+    # read_header bakes the scale into the stream time_base (segment scale x TTS)
+    # but matroska_parse_block divides only the CLUSTER component by it
+    # (cluster_time / track->time_scale + block_time), so packets land on a
+    # hybrid axis: seconds = cluster + rel x TTS. Neither the unscaled nor the
+    # fully scaled axis; non-monotonic in storage order once a late-rel block
+    # precedes an early-rel block of the next cluster, and completely silent.
+    # TrackTimestampScale is deprecated (RFC 9559 caps it at Matroska v3) and
+    # matroska.org documents that most readers ignore it, so a real-world
+    # non-1.0 value is almost always muxer damage; full spec scaling would
+    # desync the track from its siblings instead of playing it correctly.
+    # Clamp any non-1.0 value to 1.0 with a warning, extending upstream's own
+    # "< 0.01" clamp in the same spot: every track stays on the coherent,
+    # monotonic segment axis (cluster + rel), in sync with its sibling tracks,
+    # and the deviation is no longer silent.
+    local F="${FFMPEG_SRC}/libavformat/matroskadec.c"
+    grep -q "AetherEngine issue 145" "${F}" && return
+    echo "→ Patching FFmpeg: clamp matroska TrackTimestampScale != 1 to the segment axis (AetherEngine #145)"
+    perl -0777 -pi -e '
+s#        if \(track->time_scale < 0\.01\) \{\n            av_log\(matroska->ctx, AV_LOG_WARNING,\n                   "Track TimestampScale too small %f, assuming 1\.0\.\\n",\n                   track->time_scale\);\n            track->time_scale = 1\.0;\n        \}#        if (track->time_scale != 1.0) {\n            /* TrackTimestampScale != 1 is deprecated (RFC 9559, maxver 3) and\n             * the handling below is incoherent: the stream time_base bakes the\n             * scale in while matroska_parse_block divides only the cluster\n             * component by it, so packets land on a hybrid axis\n             * (cluster + rel * scale), non-monotonic in storage order. Clamp\n             * to 1.0: every track stays on the coherent segment axis, in sync\n             * with its sibling tracks, and the deviation is logged. See\n             * FFmpegBuild build.sh patch_ffmpeg_matroska_tts (AetherEngine issue 145). */\n            av_log(matroska->ctx, AV_LOG_WARNING,\n                   "TrackTimestampScale %f not supported, assuming 1.0 "\n                   "(timestamps stay on the segment axis).\\n",\n                   track->time_scale);\n            track->time_scale = 1.0;\n        }#;
+' "${F}"
+    if ! grep -q "AetherEngine issue 145" "${F}"; then
+        echo "ERROR: matroska TrackTimestampScale patch did not apply (upstream source changed?)"
+        exit 1
+    fi
+}
+
 fetch_dav1d() {
     if [[ -d "${DAV1D_SRC}" ]]; then
         echo "→ dav1d source already exists, skipping clone"
@@ -808,6 +836,7 @@ echo "╚═══════════════════════�
 fetch_ffmpeg
 patch_ffmpeg
 patch_ffmpeg_pgssub
+patch_ffmpeg_matroska_tts
 fetch_dav1d
 fetch_zimg
 fetch_zvbi
