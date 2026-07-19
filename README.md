@@ -99,6 +99,13 @@ Release configuration, dynamic framework binaries as embedded in the app (all si
 
 Assembly-optimized paths are enabled where the Apple toolchain permits.
 
+## Local FFmpeg patches
+
+`build.sh` applies two small patches to the FFmpeg source after checkout (each documented in place):
+
+- **`patch_ffmpeg`**: balances autoreleased Metal objects in `vf_yadif_videotoolbox.m` (upstream over-release crashes host apps whose GCD queues pop their last-resort autorelease pool at session teardown).
+- **`patch_ffmpeg_pgssub`**: `pgssubdec.c` no longer flushes retained palettes/objects on an Epoch-Continue PCS (composition_state 3). Epoch Continue means the previous epoch continues, so a bare PCS+WDS+END display set legitimately references retained state; upstream's flush dropped such sets with "Invalid palette id 0" (AetherEngine issue 142). Acquisition Point and Epoch Start keep flushing.
+
 ## Built with
 
 This package is vibe-coded, assembled and maintained by [Vincent Herbst](https://github.com/superuser404notfound) in close pair-programming with **Claude** (Anthropic). The commit log is the receipt: nearly every commit carries a `Co-Authored-By: Claude` trailer.

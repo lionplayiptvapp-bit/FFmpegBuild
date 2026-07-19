@@ -86,6 +86,29 @@ s#    ff_objc_release\(&encoder\);\n    ff_objc_release\(&buffer\);\n\}#    } //
     fi
 }
 
+patch_ffmpeg_pgssub() {
+    # AetherEngine #142: pgssubdec flushes retained palettes/objects for ANY
+    # composition_state != Normal (0), including 0xC0 Epoch Continue. Per the PGS
+    # semantics, Epoch Continue means the previous epoch CONTINUES across a
+    # connection point, so retained decoder state stays valid; a bare
+    # Epoch-Continue display set (PCS+WDS+END, no PDS/ODS retransmit) references
+    # that state. With the upstream flush it fails find_palette ("Invalid palette
+    # id 0"), the whole set is dropped, and since PGS end times are closed by the
+    # successor cue the predecessor cue overstays. Skip the flush for Epoch
+    # Continue only: Acquisition Point (1) and Epoch Start (2) are self-contained
+    # restatements, their flush stays correct.
+    local F="${FFMPEG_SRC}/libavcodec/pgssubdec.c"
+    grep -q "epoch-continue" "${F}" && return
+    echo "→ Patching FFmpeg: retain pgssubdec state across Epoch Continue (AetherEngine #142)"
+    perl -0777 -pi -e '
+s#    state = bytestream_get_byte\(&buf\) >> 6;\n    if \(state != 0\) \{\n        flush_cache\(avctx\);\n    \}#    state = bytestream_get_byte(&buf) >> 6;\n    if (state != 0 \&\& state != 3) {\n        /* epoch-continue (3) continues the previous epoch: retained palettes\n         * and objects stay valid and a bare PCS+WDS+END set references them,\n         * so only acquisition point (1) and epoch start (2) release the cache.\n         * See FFmpegBuild build.sh patch_ffmpeg_pgssub (AetherEngine issue 142). */\n        flush_cache(avctx);\n    }#;
+' "${F}"
+    if ! grep -q "epoch-continue" "${F}"; then
+        echo "ERROR: pgssubdec epoch-continue patch did not apply (upstream source changed?)"
+        exit 1
+    fi
+}
+
 fetch_dav1d() {
     if [[ -d "${DAV1D_SRC}" ]]; then
         echo "→ dav1d source already exists, skipping clone"
@@ -784,6 +807,7 @@ echo "╚═══════════════════════�
 
 fetch_ffmpeg
 patch_ffmpeg
+patch_ffmpeg_pgssub
 fetch_dav1d
 fetch_zimg
 fetch_zvbi
