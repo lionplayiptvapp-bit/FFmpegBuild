@@ -435,6 +435,10 @@ COMMON_FLAGS=(
     --enable-demuxer=eac3 --enable-demuxer=flac --enable-demuxer=ogg
     --enable-demuxer=wav --enable-demuxer=mp3 --enable-demuxer=srt
     --enable-demuxer=ass --enable-demuxer=concat --enable-demuxer=data
+    # sup: raw PGS/SUP sidecar files (Jellyfin serves external PGS tracks as raw .sup streams;
+    # the pgssub DECODER was always in, but without this demuxer avformat_open_input rejects the
+    # file with AVERROR_INVALIDDATA and external PGS subtitles never load. AetherEngine sidecar path.)
+    --enable-demuxer=sup
     # Raw MPEG-1/2 and MPEG-4 video elementary-stream demuxers. The mpegps
     # (MPEG Program Stream / DVD VOB) demuxer carries no codec signaling, so
     # it tags a 0x1E0-0x1EF video stream as request_probe and confirms the
