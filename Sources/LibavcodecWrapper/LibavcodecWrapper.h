@@ -1,8 +1,6 @@
 #ifndef Libavcodec_WRAPPER_H
 #define Libavcodec_WRAPPER_H
 
-#ifdef __OBJC__
-#import <Libavcodec/avcodec.h>
-#endif
+#include <Libavcodec/avcodec.h>
 
 #endif
