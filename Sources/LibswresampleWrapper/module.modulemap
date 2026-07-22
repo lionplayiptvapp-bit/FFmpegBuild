@@ -1,0 +1,5 @@
+module Libswresample [system] {
+    umbrella header "LibswresampleWrapper.h"
+    export *
+    module * { export * }
+}

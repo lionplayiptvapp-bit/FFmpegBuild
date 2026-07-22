@@ -1,0 +1,5 @@
+module Libavformat [system] {
+    umbrella header "LibavformatWrapper.h"
+    export *
+    module * { export * }
+}
