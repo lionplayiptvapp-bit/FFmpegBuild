@@ -52,14 +52,51 @@ let package = Package(
                 .linkedLibrary("c++"),
             ]
         ),
+        // C wrapper targets that expose binary framework headers as Swift modules
+        .target(
+            name: "Libavcodec",
+            dependencies: [.target(name: "LibavcodecBT")],
+            path: "Sources/LibavcodecWrapper",
+            publicHeadersPath: "."
+        ),
+        .target(
+            name: "Libavformat",
+            dependencies: [.target(name: "LibavformatBT")],
+            path: "Sources/LibavformatWrapper",
+            publicHeadersPath: "."
+        ),
+        .target(
+            name: "Libavutil",
+            dependencies: [.target(name: "LibavutilBT")],
+            path: "Sources/LibavutilWrapper",
+            publicHeadersPath: "."
+        ),
+        .target(
+            name: "Libswresample",
+            dependencies: [.target(name: "LibswresampleBT")],
+            path: "Sources/LibswresampleWrapper",
+            publicHeadersPath: "."
+        ),
+        .target(
+            name: "Libswscale",
+            dependencies: [.target(name: "LibswscaleBT")],
+            path: "Sources/LibswscaleWrapper",
+            publicHeadersPath: "."
+        ),
+        .target(
+            name: "Libavfilter",
+            dependencies: [.target(name: "LibavfilterBT")],
+            path: "Sources/LibavfilterWrapper",
+            publicHeadersPath: "."
+        ),
         // Prebuilt xcframeworks (created by build.sh)
-        .binaryTarget(name: "Libavcodec", path: "Sources/Libavcodec.xcframework"),
-        .binaryTarget(name: "Libavformat", path: "Sources/Libavformat.xcframework"),
-        .binaryTarget(name: "Libavutil", path: "Sources/Libavutil.xcframework"),
-        .binaryTarget(name: "Libswresample", path: "Sources/Libswresample.xcframework"),
-        .binaryTarget(name: "Libswscale", path: "Sources/Libswscale.xcframework"),
+        .binaryTarget(name: "LibavcodecBT", path: "Sources/Libavcodec.xcframework"),
+        .binaryTarget(name: "LibavformatBT", path: "Sources/Libavformat.xcframework"),
+        .binaryTarget(name: "LibavutilBT", path: "Sources/Libavutil.xcframework"),
+        .binaryTarget(name: "LibswresampleBT", path: "Sources/Libswresample.xcframework"),
+        .binaryTarget(name: "LibswscaleBT", path: "Sources/Libswscale.xcframework"),
         .binaryTarget(name: "Libdav1d", path: "Sources/Libdav1d.xcframework"),
-        .binaryTarget(name: "Libavfilter", path: "Sources/Libavfilter.xcframework"),
+        .binaryTarget(name: "LibavfilterBT", path: "Sources/Libavfilter.xcframework"),
         .binaryTarget(name: "Libzimg", path: "Sources/Libzimg.xcframework"),
         .binaryTarget(name: "Libzvbi", path: "Sources/Libzvbi.xcframework"),
         .testTarget(
