@@ -10,3 +10,10 @@
 //
 // Usage: import FFmpegBuild (or the individual Libav* modules)
 import Foundation
+
+@_exported import Libavcodec
+@_exported import Libavformat
+@_exported import Libavutil
+@_exported import Libswresample
+@_exported import Libswscale
+@_exported import Libavfilter
