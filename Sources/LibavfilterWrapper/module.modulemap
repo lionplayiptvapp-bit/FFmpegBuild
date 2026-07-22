@@ -1,0 +1,5 @@
+module Libavfilter [system] {
+    umbrella header "LibavfilterWrapper.h"
+    export *
+    module * { export * }
+}

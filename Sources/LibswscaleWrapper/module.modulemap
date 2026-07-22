@@ -1,0 +1,5 @@
+module Libswscale [system] {
+    umbrella header "LibswscaleWrapper.h"
+    export *
+    module * { export * }
+}
