@@ -25,33 +25,33 @@ let package = Package(
         // Swift wrapper targets that ensure binary targets are linked.
         // The binary target's framework provides the module interface.
         .target(
-            name: "LibavcodecWrapper",
-            dependencies: [.target(name: "Libavcodec")],
-            path: "Sources/LibavcodecWrapper"
-        ),
-        .target(
-            name: "LibavformatWrapper",
-            dependencies: [.target(name: "Libavformat")],
-            path: "Sources/LibavformatWrapper"
-        ),
-        .target(
             name: "LibavutilWrapper",
             dependencies: [.target(name: "Libavutil")],
             path: "Sources/LibavutilWrapper"
         ),
         .target(
+            name: "LibavcodecWrapper",
+            dependencies: [.target(name: "Libavcodec"), .target(name: "LibavutilWrapper")],
+            path: "Sources/LibavcodecWrapper"
+        ),
+        .target(
+            name: "LibavformatWrapper",
+            dependencies: [.target(name: "Libavformat"), .target(name: "LibavcodecWrapper"), .target(name: "LibavutilWrapper")],
+            path: "Sources/LibavformatWrapper"
+        ),
+        .target(
             name: "LibswresampleWrapper",
-            dependencies: [.target(name: "Libswresample")],
+            dependencies: [.target(name: "Libswresample"), .target(name: "LibavutilWrapper")],
             path: "Sources/LibswresampleWrapper"
         ),
         .target(
             name: "LibswscaleWrapper",
-            dependencies: [.target(name: "Libswscale")],
+            dependencies: [.target(name: "Libswscale"), .target(name: "LibavutilWrapper")],
             path: "Sources/LibswscaleWrapper"
         ),
         .target(
             name: "LibavfilterWrapper",
-            dependencies: [.target(name: "Libavfilter")],
+            dependencies: [.target(name: "Libavfilter"), .target(name: "LibavformatWrapper"), .target(name: "LibavcodecWrapper"), .target(name: "LibswscaleWrapper"), .target(name: "LibswresampleWrapper"), .target(name: "LibavutilWrapper")],
             path: "Sources/LibavfilterWrapper"
         ),
         .target(
