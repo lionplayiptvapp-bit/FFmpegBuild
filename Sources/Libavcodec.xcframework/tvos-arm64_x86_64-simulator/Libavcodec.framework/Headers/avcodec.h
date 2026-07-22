@@ -21,22 +21,34 @@
 #ifndef AVCODEC_AVCODEC_H
 #define AVCODEC_AVCODEC_H
 
+
+#ifndef AVALPHA_MODE_FWD_DECL
+#define AVALPHA_MODE_FWD_DECL
+enum AVAlphaMode {
+    AVALPHA_MODE_UNSPECIFIED   = 0,
+    AVALPHA_MODE_PREMULTIPLIED = 1,
+    AVALPHA_MODE_STRAIGHT      = 2,
+    AVALPHA_MODE_NB
+};
+#endif
+
+
 /**
  * @file
  * @ingroup libavc
  * Libavcodec external API header
  */
 
-#include "libavutil/samplefmt.h"
-#include "libavutil/attributes.h"
-#include "libavutil/avutil.h"
-#include "libavutil/buffer.h"
-#include "libavutil/channel_layout.h"
-#include "libavutil/dict.h"
-#include "libavutil/frame.h"
-#include "libavutil/log.h"
-#include "libavutil/pixfmt.h"
-#include "libavutil/rational.h"
+#include <Libavutil/samplefmt.h>
+#include <Libavutil/attributes.h>
+#include <Libavutil/avutil.h>
+#include <Libavutil/buffer.h>
+#include <Libavutil/channel_layout.h>
+#include <Libavutil/dict.h>
+#include <Libavutil/frame.h>
+#include <Libavutil/log.h>
+#include <Libavutil/pixfmt.h>
+#include <Libavutil/rational.h>
 
 #include "codec.h"
 #include "codec_id.h"

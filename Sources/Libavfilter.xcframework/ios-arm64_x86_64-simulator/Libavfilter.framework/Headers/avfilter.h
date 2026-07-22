@@ -22,6 +22,17 @@
 #ifndef AVFILTER_AVFILTER_H
 #define AVFILTER_AVFILTER_H
 
+#ifndef AVALPHA_MODE_FWD_DECL
+#define AVALPHA_MODE_FWD_DECL
+enum AVAlphaMode {
+    AVALPHA_MODE_UNSPECIFIED   = 0,
+    AVALPHA_MODE_PREMULTIPLIED = 1,
+    AVALPHA_MODE_STRAIGHT      = 2,
+    AVALPHA_MODE_NB
+};
+#endif
+
+
 /**
  * @file
  * @ingroup lavfi
@@ -37,21 +48,21 @@
 
 #include <stddef.h>
 
-#include "libavutil/attributes.h"
-#include "libavutil/avutil.h"
-#include "libavutil/buffer.h"
-#include "libavutil/dict.h"
-#include "libavutil/frame.h"
-#include "libavutil/log.h"
-#include "libavutil/pixfmt.h"
-#include "libavutil/rational.h"
+#include <Libavutil/attributes.h>
+#include <Libavutil/avutil.h>
+#include <Libavutil/buffer.h>
+#include <Libavutil/dict.h>
+#include <Libavutil/frame.h>
+#include <Libavutil/log.h>
+#include <Libavutil/pixfmt.h>
+#include <Libavutil/rational.h>
 
-#include "libavfilter/version_major.h"
+#include <Libavfilter/version_major.h>
 #ifndef HAVE_AV_CONFIG_H
 /* When included as part of the ffmpeg build, only include the major version
  * to avoid unnecessary rebuilds. When included externally, keep including
  * the full version information. */
-#include "libavfilter/version.h"
+#include <Libavfilter/version.h>
 #endif
 
 /**

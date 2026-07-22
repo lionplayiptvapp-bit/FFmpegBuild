@@ -5,10 +5,6 @@ framework module Libavfilter [system] {
     exclude header "dxva2.h"
     exclude header "qsv.h"
     exclude header "vdpau.h"
-    link "Libavutil"
-    link "Libavcodec"
-    link "Libavformat"
-    link "Libswscale"
-    link "Libswresample"
+    link "Libavutil Libavcodec Libavformat Libswscale Libswresample"
     export *
 }

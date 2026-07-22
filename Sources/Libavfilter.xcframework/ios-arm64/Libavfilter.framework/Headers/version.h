@@ -27,7 +27,7 @@
  * Libavfilter version macros
  */
 
-#include "libavutil/version.h"
+#include <Libavutil/version.h>
 
 #include "version_major.h"
 
