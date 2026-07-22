@@ -10,11 +10,7 @@ let package = Package(
         .macOS(.v14),
     ],
     products: [
-        .library(
-            name: "FFmpegBuild",
-            targets: ["FFmpegBuild"]
-        ),
-        // Individual libraries for consumers that want fine-grained control
+        // Individual libraries for fine-grained control
         .library(name: "Libavcodec", targets: ["LibavcodecWrapper"]),
         .library(name: "Libavformat", targets: ["LibavformatWrapper"]),
         .library(name: "Libavutil", targets: ["LibavutilWrapper"]),
@@ -26,32 +22,6 @@ let package = Package(
         .library(name: "Libzvbi", targets: ["LibzvbiWrapper"]),
     ],
     targets: [
-        // Umbrella target that links all FFmpeg libraries + dav1d + system frameworks
-        .target(
-            name: "FFmpegBuild",
-            dependencies: [
-                "LibavcodecWrapper",
-                "LibavformatWrapper",
-                "LibavutilWrapper",
-                "LibswresampleWrapper",
-                "LibswscaleWrapper",
-                "LibavfilterWrapper",
-                "Libdav1dWrapper",
-                "LibzimgWrapper",
-                "LibzvbiWrapper",
-            ],
-            path: "Sources/FFmpegBuild",
-            linkerSettings: [
-                .linkedFramework("AudioToolbox"),
-                .linkedFramework("CoreMedia"),
-                .linkedFramework("CoreVideo"),
-                .linkedFramework("VideoToolbox"),
-                .linkedLibrary("z"),
-                .linkedLibrary("bz2"),
-                .linkedLibrary("iconv"),
-                .linkedLibrary("c++"),
-            ]
-        ),
         // Swift wrapper targets that ensure binary targets are linked.
         // The binary target's framework provides the module interface.
         .target(
@@ -111,7 +81,7 @@ let package = Package(
         .binaryTarget(name: "Libzvbi", path: "Sources/Libzvbi.xcframework"),
         .testTarget(
             name: "FFmpegBuildTests",
-            dependencies: ["FFmpegBuild", "LibavfilterWrapper", "LibavutilWrapper"],
+            dependencies: ["LibavfilterWrapper", "LibavutilWrapper"],
             path: "Tests/FFmpegBuildTests"
         ),
     ]
