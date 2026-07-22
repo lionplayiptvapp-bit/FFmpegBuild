@@ -5,7 +5,5 @@ framework module Libavformat [system] {
     exclude header "dxva2.h"
     exclude header "qsv.h"
     exclude header "vdpau.h"
-    link "Libavutil"
-    link "Libavcodec"
     export *
 }
