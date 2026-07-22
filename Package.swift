@@ -70,13 +70,13 @@ let package = Package(
             path: "Sources/LibzvbiWrapper"
         ),
         // Prebuilt xcframeworks hosted on GitHub releases
-        .binaryTarget(name: "Libavcodec", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavcodec.xcframework.zip", checksum: "a69178742621ba6d5e3c17535a84421b431aa21de2c1acb28a2154612a9bc9e2"),
-        .binaryTarget(name: "Libavformat", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavformat.xcframework.zip", checksum: "57acd3db1a8cf2ac1f9c1f3c1d3cf2c7f3c15a87a5cbe511ab2df3698d6e4435"),
-        .binaryTarget(name: "Libavutil", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavutil.xcframework.zip", checksum: "f14971b6d653fab479388497f4ffb7399e6cf8c34e272408eb2b48919f375aa7"),
-        .binaryTarget(name: "Libswresample", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libswresample.xcframework.zip", checksum: "cd17ea9a9976d67f785d04b62e9520e972d108449015f6ed8327b1250360acb9"),
-        .binaryTarget(name: "Libswscale", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libswscale.xcframework.zip", checksum: "eca6b2543c36324bc724f56b725a1a092c035187e8714b4c600336c0af3c527a"),
+        .binaryTarget(name: "Libavcodec", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavcodec.xcframework.zip", checksum: "111562496406623dc484d125da9d25cd2fc58e34f2f3a1b6eeb3963048a8062f"),
+        .binaryTarget(name: "Libavformat", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavformat.xcframework.zip", checksum: "7e92737d62f81f7735c2d5107437949a9601d6baefe8f721ea54b95a1598c0c3"),
+        .binaryTarget(name: "Libavutil", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavutil.xcframework.zip", checksum: "b3bc2219eda65c27454e38920214c53a6bd0b50361aa65701b9d818607399cd9"),
+        .binaryTarget(name: "Libswresample", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libswresample.xcframework.zip", checksum: "ddcd84a70b61d6bd8d1aef6610bccb0ce4ad8cdada4539efbd0065dad39c5c3d"),
+        .binaryTarget(name: "Libswscale", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libswscale.xcframework.zip", checksum: "32cf4c3b49883d8c4688188eea3f64e384d2f8f897859bd141ae8d87ff0a4d37"),
         .binaryTarget(name: "Libdav1d", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libdav1d.xcframework.zip", checksum: "1d14b002cdfc47e0cd53f76c7b58ba34270d58dd1027363c315a0053b7fb861d"),
-        .binaryTarget(name: "Libavfilter", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavfilter.xcframework.zip", checksum: "07d54154c7f3c4f30bd9ba740ec2b4540284ef2c87aaf9a23ce69619d27d8a8b"),
+        .binaryTarget(name: "Libavfilter", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavfilter.xcframework.zip", checksum: "17f525fe35d11a07e68d370dbf98c67f6e3f3361247602b65fad6a022058ae88"),
         .binaryTarget(name: "Libzimg", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libzimg.xcframework.zip", checksum: "3515d0c4fc309c992dcdf852f01537cb2bb09465a7a2bc866f9accc79f6c0646"),
         .binaryTarget(name: "Libzvbi", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libzvbi.xcframework.zip", checksum: "c09f9d53a630223c53917d5f68dd8da2336686481a617c519b5836ec405dfce9"),
         .testTarget(
