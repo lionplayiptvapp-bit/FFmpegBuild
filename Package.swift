@@ -32,7 +32,7 @@ let package = Package(
             path: "Sources/FFmpegWrapper"
         ),
         // Unified FFmpeg framework with all headers and a single module map
-        .binaryTarget(name: "FFmpeg", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/FFmpeg.xcframework.zip", checksum: "62fbf9f685dec5b4a05d762f0a068a6ec6627b226486d81d7d1ec51cca6a1b76"),
+        .binaryTarget(name: "FFmpeg", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/FFmpeg.xcframework.zip", checksum: "54ca6f07fa30973646ee301c39ee3d9159ca4f0b3e4e031e453b40a44d964d3c"),
         // Individual library binaries for linking (no module maps)
         .binaryTarget(name: "Libavcodec", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavcodec.xcframework.zip", checksum: "3fa260c08f49d75073d775030d2b91b0560e522d99a7b1c573a5a78a642cb8db"),
         .binaryTarget(name: "Libavformat", url: "https://github.com/lionplayiptvapp-bit/FFmpegBuild/releases/download/xcframeworks-v1/Libavformat.xcframework.zip", checksum: "1835d3c289752219efe937dd46cbdaf1f3e03263374e7b72c14761955894c954"),
