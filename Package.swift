@@ -15,30 +15,30 @@ let package = Package(
             targets: ["FFmpegBuild"]
         ),
         // Individual libraries for consumers that want fine-grained control
-        .library(name: "Libavcodec", targets: ["Libavcodec"]),
-        .library(name: "Libavformat", targets: ["Libavformat"]),
-        .library(name: "Libavutil", targets: ["Libavutil"]),
-        .library(name: "Libswresample", targets: ["Libswresample"]),
-        .library(name: "Libswscale", targets: ["Libswscale"]),
-        .library(name: "Libdav1d", targets: ["Libdav1d"]),
-        .library(name: "Libavfilter", targets: ["Libavfilter"]),
-        .library(name: "Libzimg", targets: ["Libzimg"]),
-        .library(name: "Libzvbi", targets: ["Libzvbi"]),
+        .library(name: "Libavcodec", targets: ["LibavcodecWrapper"]),
+        .library(name: "Libavformat", targets: ["LibavformatWrapper"]),
+        .library(name: "Libavutil", targets: ["LibavutilWrapper"]),
+        .library(name: "Libswresample", targets: ["LibswresampleWrapper"]),
+        .library(name: "Libswscale", targets: ["LibswscaleWrapper"]),
+        .library(name: "Libdav1d", targets: ["Libdav1dWrapper"]),
+        .library(name: "Libavfilter", targets: ["LibavfilterWrapper"]),
+        .library(name: "Libzimg", targets: ["LibzimgWrapper"]),
+        .library(name: "Libzvbi", targets: ["LibzvbiWrapper"]),
     ],
     targets: [
         // Umbrella target that links all FFmpeg libraries + dav1d + system frameworks
         .target(
             name: "FFmpegBuild",
             dependencies: [
-                "Libavcodec",
-                "Libavformat",
-                "Libavutil",
-                "Libswresample",
-                "Libswscale",
-                "Libavfilter",
-                "Libdav1d",
-                "Libzimg",
-                "Libzvbi",
+                "LibavcodecWrapper",
+                "LibavformatWrapper",
+                "LibavutilWrapper",
+                "LibswresampleWrapper",
+                "LibswscaleWrapper",
+                "LibavfilterWrapper",
+                "Libdav1dWrapper",
+                "LibzimgWrapper",
+                "LibzvbiWrapper",
             ],
             path: "Sources/FFmpegBuild",
             linkerSettings: [
@@ -52,56 +52,66 @@ let package = Package(
                 .linkedLibrary("c++"),
             ]
         ),
-        // C wrapper targets that expose binary framework headers as Swift modules
+        // Swift wrapper targets that ensure binary targets are linked.
+        // The binary target's framework provides the module interface.
         .target(
-            name: "Libavcodec",
-            dependencies: [.target(name: "LibavcodecBT")],
-            path: "Sources/LibavcodecWrapper",
-            publicHeadersPath: "."
+            name: "LibavcodecWrapper",
+            dependencies: [.target(name: "Libavcodec")],
+            path: "Sources/LibavcodecWrapper"
         ),
         .target(
-            name: "Libavformat",
-            dependencies: [.target(name: "LibavformatBT")],
-            path: "Sources/LibavformatWrapper",
-            publicHeadersPath: "."
+            name: "LibavformatWrapper",
+            dependencies: [.target(name: "Libavformat")],
+            path: "Sources/LibavformatWrapper"
         ),
         .target(
-            name: "Libavutil",
-            dependencies: [.target(name: "LibavutilBT")],
-            path: "Sources/LibavutilWrapper",
-            publicHeadersPath: "."
+            name: "LibavutilWrapper",
+            dependencies: [.target(name: "Libavutil")],
+            path: "Sources/LibavutilWrapper"
         ),
         .target(
-            name: "Libswresample",
-            dependencies: [.target(name: "LibswresampleBT")],
-            path: "Sources/LibswresampleWrapper",
-            publicHeadersPath: "."
+            name: "LibswresampleWrapper",
+            dependencies: [.target(name: "Libswresample")],
+            path: "Sources/LibswresampleWrapper"
         ),
         .target(
-            name: "Libswscale",
-            dependencies: [.target(name: "LibswscaleBT")],
-            path: "Sources/LibswscaleWrapper",
-            publicHeadersPath: "."
+            name: "LibswscaleWrapper",
+            dependencies: [.target(name: "Libswscale")],
+            path: "Sources/LibswscaleWrapper"
         ),
         .target(
-            name: "Libavfilter",
-            dependencies: [.target(name: "LibavfilterBT")],
-            path: "Sources/LibavfilterWrapper",
-            publicHeadersPath: "."
+            name: "LibavfilterWrapper",
+            dependencies: [.target(name: "Libavfilter")],
+            path: "Sources/LibavfilterWrapper"
+        ),
+        .target(
+            name: "Libdav1dWrapper",
+            dependencies: [.target(name: "Libdav1d")],
+            path: "Sources/Libdav1dWrapper"
+        ),
+        .target(
+            name: "LibzimgWrapper",
+            dependencies: [.target(name: "Libzimg")],
+            path: "Sources/LibzimgWrapper"
+        ),
+        .target(
+            name: "LibzvbiWrapper",
+            dependencies: [.target(name: "Libzvbi")],
+            path: "Sources/LibzvbiWrapper"
         ),
         // Prebuilt xcframeworks (created by build.sh)
-        .binaryTarget(name: "LibavcodecBT", path: "Sources/Libavcodec.xcframework"),
-        .binaryTarget(name: "LibavformatBT", path: "Sources/Libavformat.xcframework"),
-        .binaryTarget(name: "LibavutilBT", path: "Sources/Libavutil.xcframework"),
-        .binaryTarget(name: "LibswresampleBT", path: "Sources/Libswresample.xcframework"),
-        .binaryTarget(name: "LibswscaleBT", path: "Sources/Libswscale.xcframework"),
+        .binaryTarget(name: "Libavcodec", path: "Sources/Libavcodec.xcframework"),
+        .binaryTarget(name: "Libavformat", path: "Sources/Libavformat.xcframework"),
+        .binaryTarget(name: "Libavutil", path: "Sources/Libavutil.xcframework"),
+        .binaryTarget(name: "Libswresample", path: "Sources/Libswresample.xcframework"),
+        .binaryTarget(name: "Libswscale", path: "Sources/Libswscale.xcframework"),
         .binaryTarget(name: "Libdav1d", path: "Sources/Libdav1d.xcframework"),
-        .binaryTarget(name: "LibavfilterBT", path: "Sources/Libavfilter.xcframework"),
+        .binaryTarget(name: "Libavfilter", path: "Sources/Libavfilter.xcframework"),
         .binaryTarget(name: "Libzimg", path: "Sources/Libzimg.xcframework"),
         .binaryTarget(name: "Libzvbi", path: "Sources/Libzvbi.xcframework"),
         .testTarget(
             name: "FFmpegBuildTests",
-            dependencies: ["FFmpegBuild", "Libavfilter", "Libavutil"],
+            dependencies: ["FFmpegBuild", "LibavfilterWrapper", "LibavutilWrapper"],
             path: "Tests/FFmpegBuildTests"
         ),
     ]

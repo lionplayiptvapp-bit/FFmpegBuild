@@ -1,5 +1,0 @@
-module Libavutil [system] {
-    umbrella header "LibavutilWrapper.h"
-    export *
-    module * { export * }
-}

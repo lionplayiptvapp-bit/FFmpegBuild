@@ -1,5 +1,0 @@
-module Libavcodec [system] {
-    umbrella header "LibavcodecWrapper.h"
-    export *
-    module * { export * }
-}
